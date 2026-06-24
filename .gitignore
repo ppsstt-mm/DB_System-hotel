@@ -38,6 +38,16 @@ application-local.yml
 # Replaced by hotel_management/database/hotel_management.sql
 hotel_management/hotel_management_answer.sql
 
+# Course/process documents excluded from repository handoff
+database_course/
+outputs/
+hotel_management/docs/
+hotel_management/*.doc
+hotel_management/*.docx
+4 数据库课程设计文档.pdf
+补充文字描述DFD.docx
+酒店管理系统设计说明书.pdf
+
 # Codex/local temporary artifacts
 AGENTS.md
 .codex_tmp/
