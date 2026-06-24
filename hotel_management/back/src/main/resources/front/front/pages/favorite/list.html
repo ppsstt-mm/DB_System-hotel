@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>我的收藏</title>
+  <link rel="stylesheet" href="../../css/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-portal-header></div>
+    <main class="portal-page">
+      <div class="portal-container">
+        <section class="portal-section-head">
+          <h2>我的收藏</h2>
+          <span>查看收藏过的客房和酒店条目，快速回到预订入口。</span>
+        </section>
+        <section class="portal-section">
+          <div id="favoriteHost" class="portal-room-grid"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="../../js/portal.js"></script>
+  <script>
+    hotelPortal.mountTopbar({ current: 'favorite', subtitle: '客户收藏中心' })
+    hotelPortal.ensureLogin('pages/favorite/list.html')
+
+    async function removeFavorite(id) {
+      try {
+        await hotelPortal.api('favorite/delete', {
+          method: 'POST',
+          json: [id]
+        })
+        hotelPortal.toast('已取消收藏', 'success')
+        await loadFavorites()
+      } catch (error) {
+        hotelPortal.toast(error.message || '取消收藏失败', 'error')
+      }
+    }
+
+    function typeLabel(row) {
+      if (row.tablename === 'room_catalog') return '客房'
+      if (row.tablename === 'hotel_profile') return '酒店'
+      return row.type || '收藏'
+    }
+
+    function renderFavorites(rows) {
+      const host = document.getElementById('favoriteHost')
+      if (!rows.length) {
+        host.innerHTML = hotelPortal.emptyState('你还没有收藏任何内容', '<a class="portal-button" href="../room_catalog/list.html">去浏览房源</a>')
+        return
+      }
+      host.innerHTML = rows.map(function (row) {
+        return `
+          <article class="portal-panel portal-room-card">
+            <img class="portal-room-cover" src="${hotelPortal.assetUrl(row.picture)}" alt="${hotelPortal.escapeHtml(row.name || '收藏条目')}">
+            <div class="portal-room-body">
+              <h3>${hotelPortal.escapeHtml(row.name || '收藏条目')}</h3>
+              <div class="portal-tags">
+                <span class="portal-tag">${hotelPortal.escapeHtml(typeLabel(row))}</span>
+                <span class="portal-tag">${hotelPortal.formatDateTime(row.addtime)}</span>
+              </div>
+              <p>${row.tablename === 'room_catalog' ? '回到房型详情继续预订、支付和查看评价。' : '查看酒店信息、服务介绍与住客评价。'}</p>
+              <div class="portal-form-actions">
+                <a class="portal-button-secondary" href="${hotelPortal.favoriteTargetHref(row.tablename, row.refid)}">查看详情</a>
+                <button class="portal-button-danger" type="button" data-remove-id="${row.id}">取消收藏</button>
+              </div>
+            </div>
+          </article>
+        `
+      }).join('')
+
+      host.querySelectorAll('[data-remove-id]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          removeFavorite(Number(button.getAttribute('data-remove-id')))
+        })
+      })
+    }
+
+    async function loadFavorites() {
+      try {
+        const result = await hotelPortal.api('favorite/page', {
+          method: 'GET',
+          params: { page: 1, limit: 100, sort: 'addtime', order: 'desc' }
+        })
+        renderFavorites(result.data.list || [])
+      } catch (error) {
+        document.getElementById('favoriteHost').innerHTML = hotelPortal.emptyState('收藏记录加载失败')
+        hotelPortal.toast(error.message || '收藏记录加载失败', 'error')
+      }
+    }
+
+    loadFavorites()
+  </script>
+</body>
+</html>

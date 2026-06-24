@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>个人中心</title>
+  <link rel="stylesheet" href="../../css/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-portal-header></div>
+    <main class="portal-page">
+      <div class="portal-container">
+        <section class="portal-section-head">
+          <h2>个人中心</h2>
+          <span>维护客户资料并查看最近订单</span>
+        </section>
+        <section class="portal-detail-layout">
+          <div class="portal-detail-main">
+            <form id="profileForm" class="portal-card">
+              <div class="portal-inline-form">
+                <div class="portal-field">
+                  <label for="customerming">账号</label>
+                  <input class="portal-input" id="customerming" disabled>
+                </div>
+                <div class="portal-field">
+                  <label for="xingming">姓名</label>
+                  <input class="portal-input" id="xingming">
+                </div>
+                <div class="portal-field">
+                  <label for="xingbie">性别</label>
+                  <select class="portal-select" id="xingbie">
+                    <option value="">请选择</option>
+                    <option value="male">男</option>
+                    <option value="female">女</option>
+                    <option value="unknown">保密</option>
+                  </select>
+                </div>
+                <div class="portal-field">
+                  <label for="nianling">年龄</label>
+                  <input class="portal-input" id="nianling" type="number" min="1" max="120">
+                </div>
+                <div class="portal-field">
+                  <label for="shoujihao">手机号</label>
+                  <input class="portal-input" id="shoujihao">
+                </div>
+              </div>
+              <div class="portal-form-actions" style="margin-top:16px;">
+                <button class="portal-button" type="submit">保存资料</button>
+                <a class="portal-button-secondary" href="../booking_order/list.html">查看我的订单</a>
+                <a class="portal-button-secondary" href="../favorite/list.html">查看我的收藏</a>
+              </div>
+            </form>
+          </div>
+          <aside class="portal-detail-sidebar">
+            <div class="portal-stack">
+              <div class="portal-card">
+                <h3>账户状态</h3>
+                <p class="portal-muted" id="userMetaText">正在加载账户信息</p>
+              </div>
+              <div class="portal-card">
+                <h3>最近订单</h3>
+                <div id="recentOrders"></div>
+              </div>
+              <div class="portal-card">
+                <h3>最近收藏</h3>
+                <div id="recentFavorites"></div>
+              </div>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="../../js/portal.js"></script>
+  <script>
+    hotelPortal.mountTopbar({ current: 'center', subtitle: '客户个人中心' });
+    if (!hotelPortal.ensureLogin('pages/customer/center.html')) {}
+
+    let currentUser = null;
+
+    async function loadUser() {
+      currentUser = await hotelPortal.currentCustomer();
+      if (!currentUser) {
+        return;
+      }
+      document.getElementById('customerming').value = currentUser.customerming || '';
+      document.getElementById('xingming').value = currentUser.xingming || '';
+      document.getElementById('xingbie').value = currentUser.xingbie || '';
+      document.getElementById('nianling').value = currentUser.nianling || '';
+      document.getElementById('shoujihao').value = currentUser.shoujihao || '';
+      document.getElementById('userMetaText').textContent = `客户编号 ${currentUser.id || '-'}，可在订单页查看预订、支付和入住安排。`;
+    }
+
+    async function loadOrders() {
+      const host = document.getElementById('recentOrders');
+      try {
+        const result = await hotelPortal.api('booking_order/page', {
+          method: 'GET',
+          params: { page: 1, limit: 3, sort: 'addtime', order: 'desc' }
+        });
+        const rows = result.data.list || [];
+        if (!rows.length) {
+          host.innerHTML = hotelPortal.emptyState('暂无订单记录');
+          return;
+        }
+        host.innerHTML = rows.map(function (row) {
+          return `
+            <div style="padding:12px 0; border-bottom:1px solid #e8edf4;">
+              <div style="font-weight:600;">${hotelPortal.escapeHtml(row.yudingbianhao || '订单')}</div>
+              <div class="portal-muted" style="margin-top:6px;">${hotelPortal.escapeHtml(row.kefangmingcheng || '-')} · ${hotelPortal.formatMoney(row.zongjine)}</div>
+              <div style="margin-top:8px;">
+                <span class="portal-status ${row.ispay === 'paid' ? 'success' : 'warn'}">${hotelPortal.payStatusLabel(row.ispay)}</span>
+                <span class="portal-status info">${hotelPortal.orderTrackingLabel(row)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        host.innerHTML = hotelPortal.emptyState('订单加载失败');
+      }
+    }
+
+    async function loadFavorites() {
+      const host = document.getElementById('recentFavorites')
+      try {
+        const result = await hotelPortal.api('favorite/page', {
+          method: 'GET',
+          params: { page: 1, limit: 3, sort: 'addtime', order: 'desc' }
+        })
+        const rows = result.data.list || []
+        if (!rows.length) {
+          host.innerHTML = hotelPortal.emptyState('暂无收藏记录')
+          return
+        }
+        host.innerHTML = rows.map(function (row) {
+          return `
+            <div style="padding:12px 0; border-bottom:1px solid #e8edf4;">
+              <div style="font-weight:600;">${hotelPortal.escapeHtml(row.name || '收藏条目')}</div>
+              <div class="portal-muted" style="margin-top:6px;">${hotelPortal.escapeHtml(row.type || row.tablename || '收藏')} · ${hotelPortal.formatDateTime(row.addtime)}</div>
+              <div style="margin-top:8px;">
+                <a class="portal-button-secondary" href="${hotelPortal.favoriteTargetHref(row.tablename, row.refid)}">查看详情</a>
+              </div>
+            </div>
+          `
+        }).join('')
+      } catch (error) {
+        host.innerHTML = hotelPortal.emptyState('收藏记录加载失败')
+      }
+    }
+
+    document.getElementById('profileForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      if (!currentUser) {
+        return;
+      }
+      try {
+        await hotelPortal.api('customer/update', {
+          method: 'POST',
+          json: {
+            id: currentUser.id,
+            customerming: currentUser.customerming,
+            mima: currentUser.mima,
+            xingming: document.getElementById('xingming').value.trim(),
+            xingbie: document.getElementById('xingbie').value,
+            nianling: document.getElementById('nianling').value ? Number(document.getElementById('nianling').value) : null,
+            shoujihao: document.getElementById('shoujihao').value.trim()
+          }
+        });
+        hotelPortal.toast('资料已更新', 'success');
+        await loadUser();
+      } catch (error) {
+        hotelPortal.toast(error.message || '保存失败', 'error');
+      }
+    });
+
+    loadUser().then(function () {
+      loadOrders()
+      loadFavorites()
+    });
+  </script>
+</body>
+</html>

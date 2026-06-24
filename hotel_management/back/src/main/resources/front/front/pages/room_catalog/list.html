@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>客房浏览</title>
+  <link rel="stylesheet" href="../../css/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-portal-header></div>
+    <main class="portal-page">
+      <div class="portal-container">
+        <div class="portal-section-head">
+          <h2>客房浏览</h2>
+          <span>按名称和房型筛选可预订房源</span>
+        </div>
+
+        <section class="portal-panel">
+          <div class="portal-list-toolbar">
+            <div class="portal-field">
+              <label for="searchName">客房名称</label>
+              <input class="portal-input" id="searchName" placeholder="输入客房名称">
+            </div>
+            <div class="portal-field">
+              <label for="searchCategory">房型</label>
+              <select class="portal-select" id="searchCategory">
+                <option value="">全部房型</option>
+              </select>
+            </div>
+            <div class="portal-field">
+              <label for="checkinDate">预计入住日期</label>
+              <input class="portal-input" id="checkinDate" type="date">
+            </div>
+            <div class="portal-field">
+              <label for="checkoutDate">预计离店日期</label>
+              <input class="portal-input" id="checkoutDate" type="date">
+            </div>
+            <div class="portal-form-actions">
+              <button class="portal-button" type="button" id="searchButton">筛选房源</button>
+              <button class="portal-button-secondary" type="button" id="resetButton">重置</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="portal-section">
+          <div class="portal-section-head">
+            <h2>房态摘要</h2>
+            <span>展示各房型当前可预订库存</span>
+          </div>
+          <div id="inventorySummary" class="portal-summary-grid"></div>
+        </section>
+
+        <section class="portal-section">
+          <div id="roomList" class="portal-room-grid"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="../../js/portal.js"></script>
+  <script>
+    hotelPortal.mountTopbar({ current: 'rooms', subtitle: '查看可预订房源' });
+
+    const state = {
+      rooms: [],
+      filtered: [],
+      inventory: []
+    };
+
+    function roomCategory(room) {
+      return room.room_category || '未分类';
+    }
+
+    function resolveRoomId(room) {
+      return room.id || room.room_catalog_id || room.room_id || '';
+    }
+
+    function formatDateInput(date) {
+      return date.toISOString().slice(0, 10);
+    }
+
+    function buildInventoryFallback() {
+      const map = new Map();
+      state.rooms.forEach(function (room) {
+        const key = roomCategory(room);
+        if (!map.has(key)) {
+          map.set(key, {
+            room_category: key,
+            total_rooms: 0,
+            available_rooms: 0
+          });
+        }
+        const item = map.get(key);
+        const count = Number(room.shuliang || 0);
+        item.total_rooms += count;
+        item.available_rooms += count;
+      });
+      return Array.from(map.values());
+    }
+
+    function buildRoomLink(room) {
+      const checkinDate = document.getElementById('checkinDate').value;
+      const checkoutDate = document.getElementById('checkoutDate').value;
+      const params = new URLSearchParams({ id: resolveRoomId(room) });
+      if (checkinDate) params.set('checkinDate', checkinDate);
+      if (checkoutDate) params.set('checkoutDate', checkoutDate);
+      return hotelPortal.pageUrl(`pages/room_catalog/detail.html?${params.toString()}`);
+    }
+
+    function renderInventory() {
+      const host = document.getElementById('inventorySummary');
+      const rows = state.inventory.length ? state.inventory : buildInventoryFallback();
+      if (!rows.length) {
+        host.innerHTML = hotelPortal.emptyState('暂无房态数据');
+        return;
+      }
+      host.innerHTML = rows.map(function (item) {
+        return `
+          <article class="portal-panel portal-summary-item">
+            <span>${hotelPortal.escapeHtml(item.room_category || '房型')}</span>
+            <strong>${item.available_rooms || 0}</strong>
+            <p>可预订 ${item.available_rooms || 0} / 总房间 ${item.total_rooms || 0}</p>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderRooms() {
+      const host = document.getElementById('roomList');
+      if (!state.filtered.length) {
+        host.innerHTML = hotelPortal.emptyState('没有找到符合条件的客房');
+        return;
+      }
+      host.innerHTML = state.filtered.map(function (room) {
+        const roomId = resolveRoomId(room);
+        const inventory = state.inventory.find(function (item) {
+          return String(item.room_category) === String(roomCategory(room));
+        });
+        return `
+          <article class="portal-panel portal-room-card">
+            <img class="portal-room-cover" src="${hotelPortal.assetUrl(room.kefangtupian)}" alt="${hotelPortal.escapeHtml(room.kefangmingcheng)}">
+            <div class="portal-room-body">
+              <h3>${hotelPortal.escapeHtml(room.kefangmingcheng)}</h3>
+              <div class="portal-tags">
+                <span class="portal-tag">${hotelPortal.escapeHtml(roomCategory(room))}</span>
+                <span class="portal-tag">${hotelPortal.escapeHtml(room.jiudianmingcheng || '酒店')}</span>
+                <span class="portal-tag">可预订 ${inventory ? inventory.available_rooms : room.shuliang || 0}</span>
+              </div>
+              <p>${hotelPortal.escapeHtml(hotelPortal.stripHtml(room.kefangjieshao).slice(0, 96) || '查看房型介绍、设施和住客评价。')}</p>
+              <div class="portal-price">${hotelPortal.formatMoney(room.kefangjiage)}</div>
+              <div class="portal-form-actions">
+                <a class="portal-button-secondary" href="${buildRoomLink(room)}" data-room-link="${roomId}">查看详情</a>
+                <a class="portal-button" href="${buildRoomLink(room)}" data-room-link="${roomId}">立即预订</a>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+      bindRoomLinks();
+    }
+
+    function bindRoomLinks() {
+      document.querySelectorAll('[data-room-link]').forEach(function (link) {
+        link.addEventListener('click', function () {
+          const roomId = link.getAttribute('data-room-link');
+          hotelPortal.rememberSelectedRoomId(roomId);
+        });
+      });
+    }
+
+    function applyFilters() {
+      const name = document.getElementById('searchName').value.trim().toLowerCase();
+      const category = document.getElementById('searchCategory').value;
+      state.filtered = state.rooms.filter(function (room) {
+        const matchesName = !name || String(room.kefangmingcheng || '').toLowerCase().includes(name);
+        const matchesCategory = !category || roomCategory(room) === category;
+        return matchesName && matchesCategory;
+      });
+      renderRooms();
+    }
+
+    async function loadCategories() {
+      const result = await hotelPortal.api('room_category/list', {
+        method: 'GET',
+        params: { page: 1, limit: 100, sort: 'id', order: 'asc' }
+      });
+      const rows = result.data.list || [];
+      const select = document.getElementById('searchCategory');
+      select.innerHTML = '<option value="">全部房型</option>' + rows.map(function (item) {
+        return `<option value="${hotelPortal.escapeHtml(item.room_category)}">${hotelPortal.escapeHtml(item.room_category)}</option>`;
+      }).join('');
+    }
+
+    async function loadRooms() {
+      const result = await hotelPortal.api('room_catalog/list', {
+        method: 'GET',
+        params: { page: 1, limit: 100, sort: 'clicknum', order: 'desc' }
+      });
+      state.rooms = result.data.list || [];
+      state.filtered = state.rooms.slice();
+      renderRooms();
+    }
+
+    async function loadInventory() {
+      try {
+        const result = await hotelPortal.api('room_catalog/availability/summary', { method: 'GET' });
+        state.inventory = result.data || [];
+      } catch (error) {
+        state.inventory = [];
+      }
+      renderInventory();
+    }
+
+    document.getElementById('searchButton').addEventListener('click', applyFilters);
+    document.getElementById('resetButton').addEventListener('click', function () {
+      document.getElementById('searchName').value = '';
+      document.getElementById('searchCategory').value = '';
+      state.filtered = state.rooms.slice();
+      renderRooms();
+    });
+
+    (function presetDates() {
+      const today = new Date();
+      const checkin = new Date(today.getTime());
+      const checkout = new Date(today.getTime());
+      checkin.setDate(today.getDate() + 1);
+      checkout.setDate(today.getDate() + 2);
+      document.getElementById('checkinDate').value = formatDateInput(checkin);
+      document.getElementById('checkoutDate').value = formatDateInput(checkout);
+    })();
+
+    Promise.all([loadCategories(), loadInventory(), loadRooms()]).catch(function (error) {
+      document.getElementById('roomList').innerHTML = hotelPortal.emptyState('客房数据加载失败');
+      hotelPortal.toast(error.message || '客房数据加载失败', 'error');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>客户注册</title>
+  <link rel="stylesheet" href="../../css/portal.css">
+</head>
+<body>
+  <div class="portal-login-layout">
+    <section class="portal-login-side">
+      <div>
+        <h1>创建客户账号</h1>
+        <p>注册后即可浏览房源、提交预订、查看订单并管理个人资料。</p>
+      </div>
+      <div class="portal-form-actions">
+        <a class="portal-button" href="../../index.html">返回首页</a>
+        <a class="portal-button-ghost" href="../login/login.html">已有账号，去登录</a>
+      </div>
+    </section>
+    <section class="portal-login-panel">
+      <div class="portal-form-card">
+        <h2>客户注册</h2>
+        <p class="portal-muted">请填写基础信息后完成注册</p>
+        <form id="registerForm" class="portal-stack">
+          <div class="portal-field">
+            <label for="customerming">账号</label>
+            <input class="portal-input" id="customerming" placeholder="请输入账号">
+          </div>
+          <div class="portal-field">
+            <label for="xingming">姓名</label>
+            <input class="portal-input" id="xingming" placeholder="请输入姓名">
+          </div>
+          <div class="portal-field">
+            <label for="mima">密码</label>
+            <input class="portal-input" id="mima" type="password" placeholder="请输入密码">
+          </div>
+          <div class="portal-field">
+            <label for="confirmMima">确认密码</label>
+            <input class="portal-input" id="confirmMima" type="password" placeholder="请再次输入密码">
+          </div>
+          <div class="portal-field">
+            <label for="xingbie">性别</label>
+            <select class="portal-select" id="xingbie">
+              <option value="">请选择</option>
+              <option value="male">男</option>
+              <option value="female">女</option>
+              <option value="unknown">保密</option>
+            </select>
+          </div>
+          <div class="portal-field">
+            <label for="nianling">年龄</label>
+            <input class="portal-input" id="nianling" type="number" min="1" max="120" placeholder="请输入年龄">
+          </div>
+          <div class="portal-field">
+            <label for="shoujihao">手机号</label>
+            <input class="portal-input" id="shoujihao" placeholder="请输入手机号">
+          </div>
+          <button class="portal-button" type="submit">完成注册</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <script src="../../js/portal.js"></script>
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const payload = {
+        customerming: document.getElementById('customerming').value.trim(),
+        xingming: document.getElementById('xingming').value.trim(),
+        mima: document.getElementById('mima').value.trim(),
+        xingbie: document.getElementById('xingbie').value,
+        nianling: document.getElementById('nianling').value ? Number(document.getElementById('nianling').value) : null,
+        shoujihao: document.getElementById('shoujihao').value.trim()
+      };
+      const confirmMima = document.getElementById('confirmMima').value.trim();
+
+      if (!payload.customerming || !payload.xingming || !payload.mima) {
+        hotelPortal.toast('请完整填写账号、姓名和密码', 'error');
+        return;
+      }
+      if (payload.mima !== confirmMima) {
+        hotelPortal.toast('两次输入的密码不一致', 'error');
+        return;
+      }
+
+      try {
+        await hotelPortal.api('customer/register', {
+          method: 'POST',
+          json: payload
+        });
+        hotelPortal.toast('注册成功，请登录', 'success');
+        window.setTimeout(function () {
+          window.location.href = hotelPortal.pageUrl('pages/login/login.html');
+        }, 400);
+      } catch (error) {
+        hotelPortal.toast(error.message || '注册失败', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>客户登录</title>
+  <link rel="stylesheet" href="../../css/portal.css">
+</head>
+<body>
+  <div class="portal-login-layout">
+    <section class="portal-login-side">
+      <div>
+        <h1>欢迎回到酒店在线服务门户</h1>
+        <p>登录后可以提交预订、在线支付、查看订单状态，并在个人中心维护联系方式。</p>
+      </div>
+      <div class="portal-form-actions">
+        <a class="portal-button" href="../../index.html">返回首页</a>
+        <a class="portal-button-ghost" href="../room_catalog/list.html">先看房源</a>
+      </div>
+    </section>
+    <section class="portal-login-panel">
+      <div class="portal-form-card">
+        <h2>客户登录</h2>
+        <p class="portal-muted">请输入客户账号和密码</p>
+        <form id="loginForm" class="portal-stack">
+          <div class="portal-field">
+            <label for="username">账号</label>
+            <input class="portal-input" id="username" name="username" placeholder="请输入账号" autocomplete="username">
+          </div>
+          <div class="portal-field">
+            <label for="password">密码</label>
+            <input class="portal-input" id="password" name="password" type="password" placeholder="请输入密码" autocomplete="current-password">
+          </div>
+          <button class="portal-button" type="submit">登录</button>
+        </form>
+        <div class="portal-inline-links">
+          <a class="portal-muted" href="../customer/register.html">还没有账号？立即注册</a>
+          <a class="portal-muted" href="http://localhost:8081/#/login" target="_blank" rel="noopener">前往后台</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="../../js/portal.js"></script>
+  <script>
+    const redirect = hotelPortal.query('redirect') || 'pages/customer/center.html';
+
+    if (hotelPortal.isLoggedIn()) {
+      window.location.href = hotelPortal.pageUrl(redirect);
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      if (!username || !password) {
+        hotelPortal.toast('请输入账号和密码', 'error');
+        return;
+      }
+      try {
+        const result = await hotelPortal.api('customer/login', {
+          method: 'POST',
+          form: { username: username, password: password }
+        });
+        localStorage.setItem('Token', result.auth_token || '');
+        localStorage.setItem('role', '客户');
+        localStorage.setItem('userTable', 'customer');
+        localStorage.setItem('sessionTable', 'customer');
+        localStorage.setItem('adminName', username);
+
+        const session = await hotelPortal.currentCustomer();
+        if (session) {
+          localStorage.setItem('userid', session.id || '');
+          localStorage.setItem('adminName', session.xingming || session.customerming || username);
+        }
+
+        hotelPortal.toast('登录成功', 'success');
+        window.setTimeout(function () {
+          window.location.href = hotelPortal.pageUrl(redirect);
+        }, 400);
+      } catch (error) {
+        hotelPortal.toast(error.message || '登录失败', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

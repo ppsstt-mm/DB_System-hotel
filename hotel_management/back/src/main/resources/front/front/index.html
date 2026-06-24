@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>酒店管理系统前台</title>
+  <link rel="stylesheet" href="./css/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-portal-header></div>
+    <main class="portal-page">
+      <div class="portal-container">
+        <section class="portal-hero">
+          <div class="portal-hero-main">
+            <div>
+              <h1 id="heroTitle">在线预订与住客服务</h1>
+              <p id="heroDesc">浏览房型、查看酒店信息，并在登录后完成预订、支付与订单跟踪。</p>
+              <div class="portal-actions">
+                <a class="portal-button" href="./pages/room_catalog/list.html">浏览客房</a>
+                <a class="portal-button-ghost" id="heroBookingAction" href="./pages/login/login.html?redirect=pages/room_catalog/list.html">登录后预订</a>
+                <a class="portal-button-ghost" id="heroOrderAction" href="./pages/login/login.html?redirect=pages/booking_order/list.html">查看订单</a>
+              </div>
+            </div>
+          </div>
+          <div class="portal-hero-side">
+            <div class="portal-card portal-action-card" onclick="window.location.href='./pages/room_catalog/list.html'">
+              <div>
+                <h3>可预订房源</h3>
+                <p>点击查看可预订房源，按房型和名称筛选需要的房间。</p>
+              </div>
+              <div class="portal-form-actions">
+                <span class="portal-tag" id="roomSummaryTag">点击查看可预订房源</span>
+                <span class="portal-button-secondary">查看房源</span>
+              </div>
+            </div>
+            <div class="portal-card portal-action-card" onclick="window.location.href='./pages/hotel_profile/list.html'">
+              <div>
+                <h3>酒店信息</h3>
+                <p>查看酒店介绍、位置、星级、服务电话以及住客对酒店服务的评价。</p>
+              </div>
+              <div class="portal-form-actions">
+                <span class="portal-tag" id="hotelSummaryTag">查看酒店基础信息</span>
+                <span class="portal-button-secondary">查看信息</span>
+              </div>
+            </div>
+            <div class="portal-card portal-action-card" id="orderActionCard">
+              <div>
+                <h3>订单进度</h3>
+                <p id="orderActionDesc">登录后查看自己的预订记录、支付状态和入住安排。</p>
+              </div>
+              <div class="portal-form-actions">
+                <span class="portal-tag" id="orderSummaryTag">登录后查看</span>
+                <span class="portal-button-secondary" id="orderActionLabel">进入订单页</span>
+              </div>
+            </div>
+            <div class="portal-card portal-action-card" id="serviceActionCard">
+              <div>
+                <h3>联系人工客服</h3>
+                <p>提交留言或留下联系方式，咨询预订、入住、房型和服务问题。</p>
+              </div>
+              <div class="portal-form-actions">
+                <span class="portal-tag" id="servicePhoneTag">在线留言</span>
+                <span class="portal-button-secondary">联系服务</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="portal-section">
+          <div class="portal-section-head">
+            <h2>房态概览</h2>
+            <span>展示当前房型库存与可预订情况</span>
+          </div>
+          <div id="inventorySummary" class="portal-summary-grid"></div>
+        </section>
+
+        <section class="portal-section">
+          <div class="portal-section-head">
+            <h2>推荐客房</h2>
+            <span>点击卡片查看房型详情、房态和住客评价</span>
+          </div>
+          <div id="featuredRooms" class="portal-room-grid"></div>
+        </section>
+
+        <section class="portal-section">
+          <div class="portal-section-head">
+            <h2>酒店公告</h2>
+            <span>查看最新通知与服务提醒</span>
+          </div>
+          <div id="noticeList" class="portal-news-grid"></div>
+        </section>
+
+        <section class="portal-section">
+          <div class="portal-section-head">
+            <h2>住客评价</h2>
+            <span>首页展示酒店服务评价和房型评价</span>
+          </div>
+          <div id="reviewList" class="portal-review-feed"></div>
+        </section>
+      </div>
+    </main>
+    <div class="portal-footer">酒店在线服务门户</div>
+  </div>
+
+  <div class="portal-modal-backdrop" id="serviceModal">
+    <div class="portal-modal">
+      <div class="portal-modal-head">
+        <h3>联系客服</h3>
+        <button class="portal-button-secondary" type="button" id="closeServiceModal">关闭</button>
+      </div>
+      <div class="portal-modal-body">
+        <div class="portal-stack">
+          <div class="portal-card-note" id="servicePhoneText">正在加载服务信息</div>
+          <div class="portal-field">
+            <label for="contactName">称呼</label>
+            <input class="portal-input" id="contactName" placeholder="请输入您的称呼">
+          </div>
+          <div class="portal-field">
+            <label for="contactPhone">联系电话</label>
+            <input class="portal-input" id="contactPhone" placeholder="请输入联系电话">
+          </div>
+          <div class="portal-field">
+            <label for="contactMessage">留言内容</label>
+            <textarea class="portal-textarea" id="contactMessage" placeholder="请输入要咨询的问题"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="portal-modal-foot">
+        <button class="portal-button-secondary" type="button" id="cancelServiceModal">取消</button>
+        <button class="portal-button" type="button" id="submitServiceMessage">提交留言</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/portal.js"></script>
+  <script>
+    hotelPortal.mountTopbar({ current: 'home', subtitle: '在线客房浏览与预订' });
+
+    const state = {
+      hotel: null,
+      rooms: [],
+      roomReviews: [],
+      hotelReviews: [],
+      notices: [],
+      inventory: []
+    };
+
+    const roomSummaryTag = document.getElementById('roomSummaryTag');
+    const hotelSummaryTag = document.getElementById('hotelSummaryTag');
+    const orderSummaryTag = document.getElementById('orderSummaryTag');
+    const servicePhoneTag = document.getElementById('servicePhoneTag');
+    const servicePhoneText = document.getElementById('servicePhoneText');
+    const heroBookingAction = document.getElementById('heroBookingAction');
+    const heroOrderAction = document.getElementById('heroOrderAction');
+    const orderActionCard = document.getElementById('orderActionCard');
+    const orderActionDesc = document.getElementById('orderActionDesc');
+    const orderActionLabel = document.getElementById('orderActionLabel');
+    const serviceModal = document.getElementById('serviceModal');
+
+    function roomCategory(room) {
+      return room.room_category || '未分类';
+    }
+
+    function resolveRoomId(room) {
+      return room.id || room.room_catalog_id || room.room_id || '';
+    }
+
+    function roomDetailHref(room) {
+      const roomId = resolveRoomId(room);
+      return hotelPortal.pageUrl(`pages/room_catalog/detail.html?id=${roomId}`);
+    }
+
+    function buildInventoryFallback(rooms) {
+      const map = new Map();
+      rooms.forEach(function (room) {
+        const key = roomCategory(room);
+        if (!map.has(key)) {
+          map.set(key, {
+            room_category: key,
+            total_rooms: 0,
+            available_rooms: 0,
+            room_name: room.kefangmingcheng
+          });
+        }
+        const item = map.get(key);
+        const count = Number(room.shuliang || 0);
+        item.total_rooms += count;
+        item.available_rooms += count;
+      });
+      return Array.from(map.values());
+    }
+
+    function refreshAuthState() {
+      const loggedIn = hotelPortal.isLoggedIn();
+      heroBookingAction.href = loggedIn
+        ? hotelPortal.pageUrl('pages/room_catalog/list.html')
+        : hotelPortal.pageUrl('pages/login/login.html?redirect=pages/room_catalog/list.html');
+      heroBookingAction.textContent = loggedIn ? '立即预订' : '登录后预订';
+      heroOrderAction.href = loggedIn
+        ? hotelPortal.pageUrl('pages/booking_order/list.html')
+        : hotelPortal.pageUrl('pages/login/login.html?redirect=pages/booking_order/list.html');
+      heroOrderAction.textContent = loggedIn ? '查看我的订单' : '查看订单';
+      orderSummaryTag.textContent = loggedIn ? '查看我的订单与支付进度' : '登录后查看';
+      orderActionDesc.textContent = loggedIn
+        ? '查看自己的预订、支付状态和入住安排。'
+        : '登录后查看自己的预订记录、支付状态和入住安排。';
+      orderActionLabel.textContent = '进入订单页';
+    }
+
+    function renderInventory() {
+      const host = document.getElementById('inventorySummary');
+      const rows = state.inventory.length ? state.inventory : buildInventoryFallback(state.rooms);
+      if (!rows.length) {
+        host.innerHTML = hotelPortal.emptyState('暂无房态数据');
+        return;
+      }
+      host.innerHTML = rows.map(function (item) {
+        return `
+          <article class="portal-panel portal-summary-item">
+            <span>${hotelPortal.escapeHtml(item.room_category || item.room_name || '房源')}</span>
+            <strong>${item.available_rooms || 0}</strong>
+            <p>可预订 ${item.available_rooms || 0} / 总房间 ${item.total_rooms || 0}</p>
+          </article>
+        `;
+      }).join('');
+      const totalAvailable = rows.reduce(function (sum, item) {
+        return sum + Number(item.available_rooms || 0);
+      }, 0);
+      roomSummaryTag.textContent = `当前可预订 ${totalAvailable} 间`;
+    }
+
+    function renderRooms() {
+      const host = document.getElementById('featuredRooms');
+      const rooms = state.rooms.slice().sort(function (a, b) {
+        return Number(b.clicknum || 0) - Number(a.clicknum || 0);
+      }).slice(0, 6);
+      if (!rooms.length) {
+        host.innerHTML = hotelPortal.emptyState('暂无可展示的客房');
+        return;
+      }
+      host.innerHTML = rooms.map(function (room) {
+        const roomId = resolveRoomId(room);
+        return `
+          <article class="portal-panel portal-room-card">
+            <img class="portal-room-cover" src="${hotelPortal.assetUrl(room.kefangtupian)}" alt="${hotelPortal.escapeHtml(room.kefangmingcheng)}">
+            <div class="portal-room-body">
+              <h3>${hotelPortal.escapeHtml(room.kefangmingcheng)}</h3>
+              <div class="portal-tags">
+                <span class="portal-tag">${hotelPortal.escapeHtml(roomCategory(room))}</span>
+                <span class="portal-tag">${hotelPortal.escapeHtml(room.jiudianmingcheng || '酒店')}</span>
+                <span class="portal-tag">${hotelPortal.formatMoney(room.kefangjiage)}</span>
+              </div>
+              <p>${hotelPortal.escapeHtml(hotelPortal.stripHtml(room.kefangjieshao).slice(0, 90) || '查看房型详情、配套设施和住客评价。')}</p>
+              <div class="portal-form-actions">
+                <a class="portal-button-secondary" href="${roomDetailHref(room)}" data-room-link="${roomId}">查看详情</a>
+                <a class="portal-button" href="${roomDetailHref(room)}" data-room-link="${roomId}">立即预订</a>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+      bindRoomLinks();
+    }
+
+    function bindRoomLinks() {
+      document.querySelectorAll('[data-room-link]').forEach(function (link) {
+        link.addEventListener('click', function () {
+          const roomId = link.getAttribute('data-room-link');
+          hotelPortal.rememberSelectedRoomId(roomId);
+        });
+      });
+    }
+
+    function renderNotices() {
+      const host = document.getElementById('noticeList');
+      if (!state.notices.length) {
+        host.innerHTML = hotelPortal.emptyState('暂无公告');
+        return;
+      }
+      host.innerHTML = state.notices.slice(0, 4).map(function (item) {
+        return `
+          <article class="portal-panel portal-news-card">
+            <div class="portal-news-body">
+              <div class="portal-tags">
+                <span class="portal-tag">${hotelPortal.formatDate(item.addtime)}</span>
+              </div>
+              <h3>${hotelPortal.escapeHtml(item.title)}</h3>
+              <p>${hotelPortal.escapeHtml(hotelPortal.stripHtml(item.introduction || item.content).slice(0, 96) || '查看公告详情。')}</p>
+              <div class="portal-form-actions" style="margin-top:16px;">
+                <a class="portal-button-secondary" href="./pages/notice/detail.html?id=${item.id}">查看详情</a>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderReviews() {
+      const host = document.getElementById('reviewList');
+      const roomMap = new Map(state.rooms.map(function (room) {
+        return [String(room.id), room];
+      }));
+      const mixed = [];
+
+      state.roomReviews.slice(0, 6).forEach(function (review) {
+        const room = roomMap.get(String(review.refid));
+        mixed.push({
+          type: 'room',
+          title: room ? room.kefangmingcheng : '客房评价',
+          subtitle: room ? roomCategory(room) : '房型',
+          review: review
+        });
+      });
+      state.hotelReviews.slice(0, 4).forEach(function (review) {
+        mixed.push({
+          type: 'hotel',
+          title: state.hotel ? state.hotel.jiudianmingcheng : '酒店服务评价',
+          subtitle: '酒店服务',
+          review: review
+        });
+      });
+
+      mixed.sort(function (a, b) {
+        return String(b.review.addtime || '').localeCompare(String(a.review.addtime || ''));
+      });
+
+      if (!mixed.length) {
+        host.innerHTML = hotelPortal.emptyState('暂无住客评价');
+        return;
+      }
+
+      host.innerHTML = mixed.slice(0, 8).map(function (item) {
+        const review = item.review;
+        return `
+          <article class="portal-panel portal-review-item">
+            <div class="portal-review-head">
+              ${hotelPortal.avatarMarkup(review.nickname || '住客')}
+              <div style="flex:1;">
+                <div class="portal-review-meta">
+                  <strong>${hotelPortal.escapeHtml(review.nickname || '住客')}</strong>
+                  <span class="portal-tag">${hotelPortal.escapeHtml(item.subtitle)}</span>
+                  <span class="portal-tag">${hotelPortal.formatDate(review.addtime)}</span>
+                </div>
+                <div class="portal-muted" style="margin-top:4px;">${hotelPortal.escapeHtml(item.title)}</div>
+              </div>
+            </div>
+            <div class="portal-review-body">${hotelPortal.escapeHtml(hotelPortal.stripHtml(review.content) || '暂无评价内容')}</div>
+            ${review.reply ? `<div class="portal-review-reply"><strong>酒店回复</strong><div>${hotelPortal.escapeHtml(hotelPortal.stripHtml(review.reply))}</div></div>` : ''}
+          </article>
+        `;
+      }).join('');
+    }
+
+    function openServiceModal() {
+      serviceModal.classList.add('open');
+    }
+
+    function closeServiceModal() {
+      serviceModal.classList.remove('open');
+    }
+
+    document.getElementById('closeServiceModal').addEventListener('click', closeServiceModal);
+    document.getElementById('cancelServiceModal').addEventListener('click', closeServiceModal);
+    document.getElementById('serviceActionCard').addEventListener('click', openServiceModal);
+    serviceModal.addEventListener('click', function (event) {
+      if (event.target === serviceModal) {
+        closeServiceModal();
+      }
+    });
+    document.getElementById('submitServiceMessage').addEventListener('click', function () {
+      const message = document.getElementById('contactMessage').value.trim();
+      if (!message) {
+        hotelPortal.toast('请先填写留言内容', 'error');
+        return;
+      }
+      const history = JSON.parse(localStorage.getItem('serviceMessages') || '[]');
+      history.unshift({
+        name: document.getElementById('contactName').value.trim(),
+        phone: document.getElementById('contactPhone').value.trim(),
+        message: message,
+        createdAt: new Date().toISOString()
+      });
+      localStorage.setItem('serviceMessages', JSON.stringify(history.slice(0, 20)));
+      document.getElementById('contactName').value = '';
+      document.getElementById('contactPhone').value = '';
+      document.getElementById('contactMessage').value = '';
+      closeServiceModal();
+      hotelPortal.toast('留言已提交，客服会尽快联系您。', 'success');
+    });
+
+    orderActionCard.addEventListener('click', function () {
+      window.location.href = hotelPortal.isLoggedIn()
+        ? hotelPortal.pageUrl('pages/booking_order/list.html')
+        : hotelPortal.pageUrl('pages/login/login.html?redirect=pages/booking_order/list.html');
+    });
+
+    async function loadInventory() {
+      try {
+        const result = await hotelPortal.api('room_catalog/availability/summary', { method: 'GET' });
+        state.inventory = result.data || [];
+      } catch (error) {
+        state.inventory = [];
+      }
+    }
+
+    async function bootstrap() {
+      refreshAuthState();
+      try {
+        const [hotelRes, roomRes, noticeRes, roomReviewRes, hotelReviewRes] = await Promise.all([
+          hotelPortal.api('hotel_profile/list', { method: 'GET', params: { page: 1, limit: 1 } }),
+          hotelPortal.api('room_catalog/list', { method: 'GET', params: { page: 1, limit: 20, sort: 'clicknum', order: 'desc' } }),
+          hotelPortal.api('notice/list', { method: 'GET', params: { page: 1, limit: 10, sort: 'addtime', order: 'desc' } }),
+          hotelPortal.api('room_review/list', { method: 'GET', params: { page: 1, limit: 20, sort: 'addtime', order: 'desc' } }),
+          hotelPortal.api('hotel_review/list', { method: 'GET', params: { page: 1, limit: 20, sort: 'addtime', order: 'desc' } }),
+          loadInventory()
+        ]);
+
+        state.hotel = (hotelRes.data.list || [])[0] || null;
+        state.rooms = roomRes.data.list || [];
+        state.notices = noticeRes.data.list || [];
+        state.roomReviews = roomReviewRes.data.list || [];
+        state.hotelReviews = hotelReviewRes.data.list || [];
+
+        if (state.hotel) {
+          document.getElementById('heroTitle').textContent = `${state.hotel.jiudianmingcheng} 在线服务门户`;
+          document.getElementById('heroDesc').textContent = hotelPortal.stripHtml(state.hotel.jiudianjieshao) || '浏览房型、查看酒店信息，并在登录后完成预订、支付与订单跟踪。';
+          hotelSummaryTag.textContent = `${state.hotel.leibie || '酒店'} · ${state.hotel.xingji || '服务信息'}`;
+          servicePhoneTag.textContent = state.hotel.fuwurexian || '在线留言';
+          servicePhoneText.innerHTML = state.hotel.fuwurexian
+            ? `<strong>服务热线：</strong>${hotelPortal.escapeHtml(state.hotel.fuwurexian)}`
+            : '请留下联系方式，客服会尽快与您沟通。';
+        }
+
+        renderInventory();
+        renderRooms();
+        renderNotices();
+        renderReviews();
+      } catch (error) {
+        document.getElementById('inventorySummary').innerHTML = hotelPortal.emptyState('首页数据加载失败');
+        document.getElementById('featuredRooms').innerHTML = '';
+        document.getElementById('noticeList').innerHTML = '';
+        document.getElementById('reviewList').innerHTML = '';
+        hotelPortal.toast(error.message || '首页数据加载失败', 'error');
+      }
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>

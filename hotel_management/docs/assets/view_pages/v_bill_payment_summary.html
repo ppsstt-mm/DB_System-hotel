@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>账单支付汇总视图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --subtle: #6b7280;
+      --line: #dbe2ea;
+      --head: #eef4ff;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .page {
+      width: min(1600px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 28px 32px;
+    }
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+    .title {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.2;
+    }
+    .meta {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      color: var(--subtle);
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .badge {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 8px 12px;
+      min-width: 120px;
+    }
+    .table-wrap {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      font-size: 13px;
+    }
+    thead th {
+      background: var(--head);
+      color: #0f172a;
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      word-break: break-word;
+    }
+    tbody tr:nth-child(even) {
+      background: #fbfdff;
+    }
+    .footnote {
+      margin-top: 12px;
+      color: var(--subtle);
+      font-size: 12px;
+    }
+    .accent {
+      color: var(--accent);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="hero">
+      <div>
+        <h1 class="title">账单支付汇总视图</h1>
+        <div class="meta">
+          <div class="badge">数据库：<span class="accent">hotel_management</span></div>
+          <div class="badge">视图名：<span class="accent">v_bill_payment_summary</span></div>
+          <div class="badge">记录数：<span class="accent">1</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      
+    <table>
+      <thead>
+        <tr><th>bill_id</th><th>booking_id</th><th>checkin_id</th><th>customer_id</th><th>customer_name</th><th>room_amount</th><th>service_amount</th><th>discount_amount</th><th>payable_amount</th><th>actual_paid_amount</th><th>actual_refund_amount</th><th>bill_status</th><th>last_paid_at</th><th>created_at</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>1649006857523</td><td>1</td><td>21</td><td>??1</td><td>122.00</td><td>20.00</td><td>5.00</td><td>137.00</td><td>137.00</td><td>0.00</td><td>paid</td><td>2026-05-13 11:24:55</td><td>2026-05-13 11:24:55</td></tr>
+      </tbody>
+    </table>
+    
+    </div>
+    <div class="footnote">截图生成时间对应当前本地数据库中的演示数据，用于课程设计报告附图。</div>
+  </div>
+</body>
+</html>

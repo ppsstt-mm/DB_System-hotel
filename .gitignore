@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+target/
+dist/
+dist_verify/
+**/target/
+**/dist/
+**/dist_verify/
+*.class
+*.jar
+*.war
+
+# Logs and runtime files
+logs/
+runlogs/
+*.log
+*.out
+*.err
+
+# Local IDE/editor state
+.idea/
+.vscode/
+*.iml
+*.bak
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment/local overrides
+.env
+.env.*
+application-local.yml
+
+# Replaced by hotel_management/database/hotel_management.sql
+hotel_management/hotel_management_answer.sql
+
+# Codex/local temporary artifacts
+AGENTS.md
+.codex_tmp/
+work/
+render/
+renders/
+libreoffice-profile*/

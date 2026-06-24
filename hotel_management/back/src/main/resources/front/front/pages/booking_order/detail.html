@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>订单详情</title>
+  <link rel="stylesheet" href="../../css/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div data-portal-header></div>
+    <main class="portal-page">
+      <div class="portal-container">
+        <div id="detailHost"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../../js/portal.js"></script>
+  <script>
+    hotelPortal.mountTopbar({ current: 'orders', subtitle: '查看订单详情、支付与入住安排' })
+    hotelPortal.ensureLogin('pages/booking_order/detail.html')
+
+    const orderId = hotelPortal.query('id')
+    const detailHost = document.getElementById('detailHost')
+    const state = {
+      flow: null,
+      guestRows: []
+    }
+    let countdownTimer = null
+
+    function money(value) {
+      return hotelPortal.formatMoney(value || 0)
+    }
+
+    function formatDate(value) {
+      return hotelPortal.formatDate(value)
+    }
+
+    function formatDateTime(value) {
+      return hotelPortal.formatDateTime(value)
+    }
+
+    function paymentMethodLabel(value) {
+      return {
+        wechat: '微信支付',
+        alipay: '支付宝',
+        card: '银行卡',
+        cash: '现金'
+      }[value] || (value || '-')
+    }
+
+    function paymentStatusLabel(value) {
+      return {
+        success: '成功',
+        failed: '失败',
+        cancelled: '已取消'
+      }[value] || (value || '-')
+    }
+
+    function checkinStatusLabel(value) {
+      return {
+        checked_in: '入住中',
+        checked_out: '已离店',
+        cancelled: '已取消'
+      }[value] || (value || '-')
+    }
+
+    function roomStatusLabel(value) {
+      return hotelPortal.roomStatusLabel ? hotelPortal.roomStatusLabel(value) : (value || '-')
+    }
+
+    function canPay() {
+      if (!state.flow) return false
+      const booking = state.flow.booking
+      return booking.ispay !== 'paid' && booking.booking_status !== 'cancelled' && booking.booking_status !== 'completed'
+    }
+
+    function canReschedule() {
+      if (!state.flow) return false
+      const booking = state.flow.booking
+      return booking.booking_status === 'created' && booking.ispay === 'paid'
+    }
+
+    function canCancel() {
+      return state.flow && state.flow.booking.booking_status === 'created' && state.flow.booking.ispay !== 'paid'
+    }
+
+    function canRefund() {
+      if (!state.flow) return false
+      const booking = state.flow.booking
+      return booking.booking_status === 'created' && booking.ispay === 'paid'
+    }
+
+    function canEditGuests() {
+      if (!state.flow) return false
+      const status = state.flow.booking.booking_status
+      return status !== 'cancelled' && status !== 'completed'
+    }
+
+    function syncGuestRows() {
+      const sourceRows = (state.flow && state.flow.bookingGuests) ? state.flow.bookingGuests : []
+      state.guestRows = sourceRows.map(function (item) {
+        return {
+          guest_name: item.guest_name || '',
+          id_card_no: item.id_card_no || '',
+          phone: item.phone || '',
+          is_primary: Number(item.is_primary) === 1 ? 1 : 0
+        }
+      })
+      if (!state.guestRows.length) {
+        state.guestRows = [{ guest_name: '', id_card_no: '', phone: '', is_primary: 1 }]
+      }
+      state.guestRows.sort(function (a, b) {
+        return Number(b.is_primary) - Number(a.is_primary)
+      })
+      state.guestRows[0].is_primary = 1
+      for (let i = 1; i < state.guestRows.length; i++) {
+        state.guestRows[i].is_primary = 0
+      }
+    }
+
+    function guestEditorMarkup() {
+      return state.guestRows.map(function (guest, index) {
+        return `
+          <div class="portal-card" style="padding:12px; margin-top:${index === 0 ? 0 : 12}px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+              <strong>${index === 0 ? '主入住人' : `同行人 ${index}`}</strong>
+              ${index === 0
+                ? '<span class="portal-tag">订单联系人</span>'
+                : (canEditGuests() ? `<button class="portal-button-danger" type="button" data-remove-guest="${index}">移除</button>` : '')}
+            </div>
+            <div class="portal-inline-form">
+              <div class="portal-field">
+                <label>姓名</label>
+                <input class="portal-input" data-guest-field="guest_name" data-guest-index="${index}" value="${hotelPortal.escapeHtml(guest.guest_name || '')}" ${canEditGuests() ? '' : 'disabled'}>
+              </div>
+              <div class="portal-field">
+                <label>身份证号</label>
+                <input class="portal-input" data-guest-field="id_card_no" data-guest-index="${index}" value="${hotelPortal.escapeHtml(guest.id_card_no || '')}" ${canEditGuests() ? '' : 'disabled'}>
+              </div>
+              <div class="portal-field">
+                <label>联系电话</label>
+                <input class="portal-input" data-guest-field="phone" data-guest-index="${index}" value="${hotelPortal.escapeHtml(guest.phone || '')}" ${canEditGuests() ? '' : 'disabled'}>
+              </div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+
+    function readGuestRowsFromDom() {
+      const nextRows = state.guestRows.map(function (guest) {
+        return Object.assign({}, guest)
+      })
+      document.querySelectorAll('[data-guest-field]').forEach(function (input) {
+        const index = Number(input.getAttribute('data-guest-index'))
+        const field = input.getAttribute('data-guest-field')
+        if (!nextRows[index]) {
+          nextRows[index] = { guest_name: '', id_card_no: '', phone: '', is_primary: index === 0 ? 1 : 0 }
+        }
+        nextRows[index][field] = input.value.trim()
+      })
+      state.guestRows = nextRows
+      if (state.guestRows.length) {
+        state.guestRows[0].is_primary = 1
+      }
+    }
+
+    function collectGuests() {
+      readGuestRowsFromDom()
+      const guests = state.guestRows
+        .map(function (guest, index) {
+          return {
+            guest_name: (guest.guest_name || '').trim(),
+            id_card_no: (guest.id_card_no || '').trim(),
+            phone: (guest.phone || '').trim(),
+            is_primary: index === 0 ? 1 : 0
+          }
+        })
+        .filter(function (guest) {
+          return guest.guest_name || guest.id_card_no || guest.phone
+        })
+
+      if (!guests.length) {
+        hotelPortal.toast('请至少保留一位入住人', 'error')
+        return null
+      }
+      for (const guest of guests) {
+        if (!guest.guest_name) {
+          hotelPortal.toast('入住人姓名不能为空', 'error')
+          return null
+        }
+      }
+      guests[0].is_primary = 1
+      return guests
+    }
+
+    async function payOrder() {
+      try {
+        const payMethod = document.getElementById('payMethod').value
+        await hotelPortal.api(`booking_order/pay/${orderId}?payMethod=${encodeURIComponent(payMethod)}`, {
+          method: 'POST'
+        })
+        hotelPortal.toast('支付成功', 'success')
+        await loadFlow()
+      } catch (error) {
+        hotelPortal.toast(error.message || '支付失败', 'error')
+      }
+    }
+
+    async function cancelOrder() {
+      if (!window.confirm('确认取消这笔订单吗？')) {
+        return
+      }
+      try {
+        await hotelPortal.api(`booking_order/cancel/${orderId}`, { method: 'POST' })
+        hotelPortal.toast('订单已取消', 'success')
+        await loadFlow()
+      } catch (error) {
+        hotelPortal.toast(error.message || '取消失败', 'error')
+      }
+    }
+
+    async function rescheduleOrder() {
+      const checkinDate = document.getElementById('rescheduleCheckinDate').value
+      const checkoutDate = document.getElementById('rescheduleCheckoutDate').value
+      if (!checkinDate || !checkoutDate) {
+        hotelPortal.toast('请选择新的入住和离店日期', 'error')
+        return
+      }
+      if (checkoutDate <= checkinDate) {
+        hotelPortal.toast('离店日期必须晚于入住日期', 'error')
+        return
+      }
+      try {
+        await hotelPortal.api(`booking_order/reschedule/${orderId}`, {
+          method: 'POST',
+          json: {
+            expected_checkin_date: checkinDate,
+            expected_checkout_date: checkoutDate
+          }
+        })
+        hotelPortal.toast('订单改期成功', 'success')
+        await loadFlow()
+      } catch (error) {
+        hotelPortal.toast(error.message || '改期失败', 'error')
+      }
+    }
+
+    async function refundOrder() {
+      const reasonInput = document.getElementById('refundReason')
+      const reason = reasonInput ? reasonInput.value.trim() : ''
+      if (!window.confirm('确认对这笔已支付订单发起退款吗？')) {
+        return
+      }
+      try {
+        await hotelPortal.api(`booking_order/refund/${orderId}`, {
+          method: 'POST',
+          json: {
+            reason: reason || '客户在入住前申请退款'
+          }
+        })
+        hotelPortal.toast('退款成功，订单已取消', 'success')
+        await loadFlow()
+      } catch (error) {
+        hotelPortal.toast(error.message || '退款失败', 'error')
+      }
+    }
+
+    async function saveGuests() {
+      const guests = collectGuests()
+      if (!guests) {
+        return
+      }
+      try {
+        await hotelPortal.api(`booking_order/guests/save/${orderId}`, {
+          method: 'POST',
+          json: { guests: guests }
+        })
+        hotelPortal.toast('入住人信息已更新', 'success')
+        await loadFlow()
+      } catch (error) {
+        hotelPortal.toast(error.message || '入住人信息保存失败', 'error')
+      }
+    }
+
+    function bindGuestEvents() {
+      const addButton = document.getElementById('addGuestButton')
+      if (addButton) {
+        addButton.addEventListener('click', function () {
+          readGuestRowsFromDom()
+          state.guestRows.push({ guest_name: '', id_card_no: '', phone: '', is_primary: 0 })
+          renderOrder()
+        })
+      }
+      document.querySelectorAll('[data-remove-guest]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          readGuestRowsFromDom()
+          const index = Number(button.getAttribute('data-remove-guest'))
+          state.guestRows.splice(index, 1)
+          renderOrder()
+        })
+      })
+      document.querySelectorAll('[data-guest-field]').forEach(function (input) {
+        input.addEventListener('input', readGuestRowsFromDom)
+      })
+    }
+
+    function renderTimeline() {
+      const timeline = (state.flow && state.flow.timeline) || []
+      if (!timeline.length) {
+        return hotelPortal.emptyState('当前订单还没有业务流记录')
+      }
+      return timeline.map(function (item) {
+        return `
+          <div class="portal-card" style="padding:14px; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <strong>${hotelPortal.escapeHtml(item.title || '-')}</strong>
+              <span class="portal-tag">${formatDateTime(item.time)}</span>
+            </div>
+            <div class="portal-muted" style="margin-top:8px;">${hotelPortal.escapeHtml(item.description || '-')}</div>
+          </div>
+        `
+      }).join('')
+    }
+
+    function renderPaymentRecords() {
+      const rows = (state.flow && state.flow.paymentRecords) || []
+      if (!rows.length) {
+        return hotelPortal.emptyState('当前订单还没有支付记录')
+      }
+      return `
+        <div class="portal-info-list">
+          ${rows.map(function (row) {
+            return `
+              <div class="portal-info-row" style="align-items:flex-start;">
+                <span>
+                  <strong>${hotelPortal.escapeHtml(row.payment_no || '-')}</strong><br>
+                  <span class="portal-muted">${paymentMethodLabel(row.pay_method)} / ${paymentStatusLabel(row.pay_status)}</span>
+                </span>
+                <span style="text-align:right;">
+                  ${money(row.pay_amount)}<br>
+                  <span class="portal-muted">${formatDateTime(row.paid_at)}</span>
+                </span>
+              </div>
+            `
+          }).join('')}
+        </div>
+      `
+    }
+
+    function renderRefundRecords() {
+      const rows = (state.flow && state.flow.refundRecords) || []
+      if (!rows.length) {
+        return '<div class="portal-muted">当前订单还没有退款记录。</div>'
+      }
+      return `
+        <div class="portal-info-list">
+          ${rows.map(function (row) {
+            return `
+              <div class="portal-info-row" style="align-items:flex-start;">
+                <span>
+                  <strong>${hotelPortal.escapeHtml(row.refund_no || '-')}</strong><br>
+                  <span class="portal-muted">${hotelPortal.escapeHtml(row.refund_reason || '-')}</span>
+                </span>
+                <span style="text-align:right;">
+                  ${money(row.refund_amount)}<br>
+                  <span class="portal-muted">${formatDateTime(row.created_at)}</span>
+                </span>
+              </div>
+            `
+          }).join('')}
+        </div>
+      `
+    }
+
+    function paymentDeadlineSeconds() {
+      if (!state.flow || !state.flow.booking) {
+        return 0
+      }
+      const booking = state.flow.booking
+      if (booking.booking_status !== 'created' || booking.ispay === 'paid' || booking.ispay === 'refunded') {
+        return 0
+      }
+      const createdAt = booking.addtime || booking.yudingriqi
+      if (!createdAt) {
+        return 0
+      }
+      const expireAt = new Date(String(createdAt).replace(' ', 'T')).getTime() + 3 * 60 * 1000
+      return Math.max(0, Math.floor((expireAt - Date.now()) / 1000))
+    }
+
+    function paymentDeadlineMarkup() {
+      const seconds = paymentDeadlineSeconds()
+      if (!canPay()) {
+        return ''
+      }
+      const minutes = String(Math.floor(seconds / 60)).padStart(2, '0')
+      const remainSeconds = String(seconds % 60).padStart(2, '0')
+      return `
+        <div class="portal-card" style="margin-bottom:16px; border-color:${seconds <= 60 ? '#fca5a5' : '#cbd5e1'};">
+          <strong>支付时限</strong>
+          <div class="portal-price" id="paymentDeadlineValue" style="font-size:24px; margin-top:8px;">${minutes}:${remainSeconds}</div>
+          <div class="portal-muted" style="margin-top:8px;">未支付订单会在创建后 3 分钟自动取消，请先完成支付，再办理改期或退款。</div>
+        </div>
+      `
+    }
+
+    function startCountdown() {
+      if (countdownTimer) {
+        window.clearInterval(countdownTimer)
+        countdownTimer = null
+      }
+      if (!canPay()) {
+        return
+      }
+      countdownTimer = window.setInterval(function () {
+        const nextSeconds = paymentDeadlineSeconds()
+        const timerNode = document.getElementById('paymentDeadlineValue')
+        if (timerNode) {
+          const minutes = String(Math.floor(nextSeconds / 60)).padStart(2, '0')
+          const seconds = String(nextSeconds % 60).padStart(2, '0')
+          timerNode.textContent = `${minutes}:${seconds}`
+        }
+        if (nextSeconds <= 0) {
+          window.clearInterval(countdownTimer)
+          countdownTimer = null
+          loadFlow()
+        }
+      }, 1000)
+    }
+
+    function renderRoomAssignments() {
+      const rows = (state.flow && state.flow.bookingRooms) || []
+      if (!rows.length) {
+        return hotelPortal.emptyState('当前订单还没有锁定房间')
+      }
+      return `
+        <div class="portal-info-list">
+          ${rows.map(function (row) {
+            return `
+              <div class="portal-info-row" style="align-items:flex-start;">
+                <span>
+                  <strong>${hotelPortal.escapeHtml(row.room_no || '-')}</strong><br>
+                  <span class="portal-muted">${hotelPortal.escapeHtml(row.room_name || '-')} / ${hotelPortal.escapeHtml(row.room_category || '-')}</span>
+                </span>
+                <span style="text-align:right;">
+                  ${roomStatusLabel(row.room_current_status)}<br>
+                  <span class="portal-muted">${formatDate(row.stay_start_date)} - ${formatDate(row.stay_end_date)}</span>
+                </span>
+              </div>
+            `
+          }).join('')}
+        </div>
+      `
+    }
+
+    function renderOrder() {
+      if (!state.flow || !state.flow.booking) {
+        detailHost.innerHTML = hotelPortal.emptyState('未找到对应订单')
+        return
+      }
+
+      const booking = state.flow.booking
+      const bill = state.flow.billSummary || {}
+      const checkin = state.flow.checkinRecord
+
+      detailHost.innerHTML = `
+        <section class="portal-section-head">
+          <h2>订单详情</h2>
+          <span>${hotelPortal.escapeHtml(booking.yudingbianhao || '')}</span>
+        </section>
+
+        <section class="portal-split" style="margin-bottom:18px;">
+          <div class="portal-card">
+            <span class="portal-muted">当前阶段</span>
+            <div class="portal-price" style="font-size:28px;">${hotelPortal.escapeHtml(state.flow.currentStage || '-')}</div>
+          </div>
+          <div class="portal-card">
+            <span class="portal-muted">支付状态</span>
+            <div class="portal-price" style="font-size:28px;">${hotelPortal.payStatusLabel(booking.ispay)}</div>
+          </div>
+          <div class="portal-card">
+            <span class="portal-muted">账单状态</span>
+            <div class="portal-price" style="font-size:28px;">${bill.bill_status ? hotelPortal.escapeHtml(bill.bill_status) : '未生成'}</div>
+          </div>
+        </section>
+
+        <section class="portal-detail-layout">
+          <div class="portal-detail-main">
+            <div class="portal-card">
+              <h3>订单总览</h3>
+              <div class="portal-info-list">
+                <div class="portal-info-row"><span>客房名称</span><span>${hotelPortal.escapeHtml(booking.kefangmingcheng || '-')}</span></div>
+                <div class="portal-info-row"><span>房型</span><span>${hotelPortal.escapeHtml(booking.room_category || '-')}</span></div>
+                <div class="portal-info-row"><span>酒店名称</span><span>${hotelPortal.escapeHtml(booking.jiudianmingcheng || '-')}</span></div>
+                <div class="portal-info-row"><span>订单金额</span><span>${money(booking.zongjine)}</span></div>
+                <div class="portal-info-row"><span>预计入住</span><span>${formatDate(booking.expected_checkin_date)}</span></div>
+                <div class="portal-info-row"><span>预计离店</span><span>${formatDate(booking.expected_checkout_date)}</span></div>
+                <div class="portal-info-row"><span>客户姓名</span><span>${hotelPortal.escapeHtml(booking.xingming || '-')}</span></div>
+                <div class="portal-info-row"><span>联系电话</span><span>${hotelPortal.escapeHtml(booking.shoujihao || '-')}</span></div>
+              </div>
+            </div>
+
+            <div class="portal-card" style="margin-top:16px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+                <h3 style="margin:0;">预订入住人</h3>
+                ${canEditGuests() ? '<button class="portal-button-secondary" type="button" id="addGuestButton">添加同行人</button>' : ''}
+              </div>
+              ${guestEditorMarkup()}
+              ${canEditGuests() ? '<div class="portal-form-actions" style="margin-top:16px;"><button class="portal-button" type="button" id="saveGuestsButton">保存入住人信息</button></div>' : ''}
+            </div>
+
+            <div class="portal-card" style="margin-top:16px;">
+              <h3>房间与入住安排</h3>
+              ${renderRoomAssignments()}
+              <div style="margin-top:14px;">
+                ${checkin ? `
+                  <div class="portal-info-list">
+                    <div class="portal-info-row"><span>入住状态</span><span>${checkinStatusLabel(checkin.status)}</span></div>
+                    <div class="portal-info-row"><span>办理员工</span><span>${hotelPortal.escapeHtml(checkin.employee_name || '-')}</span></div>
+                    <div class="portal-info-row"><span>实际入住时间</span><span>${formatDateTime(checkin.checkin_time)}</span></div>
+                    <div class="portal-info-row"><span>实际离店时间</span><span>${formatDateTime(checkin.checkout_time)}</span></div>
+                  </div>
+                ` : '<div class="portal-muted">当前订单尚未办理入住。</div>'}
+              </div>
+            </div>
+          </div>
+
+          <aside class="portal-detail-sidebar">
+            <div class="portal-stack">
+              ${paymentDeadlineMarkup()}
+              <div class="portal-card">
+                <h3>支付到账单</h3>
+                <div class="portal-info-list">
+                  <div class="portal-info-row"><span>应收金额</span><span>${money(bill.payable_amount || booking.zongjine)}</span></div>
+                  <div class="portal-info-row"><span>实收金额</span><span>${money(bill.actual_paid_amount || 0)}</span></div>
+                  <div class="portal-info-row"><span>退款金额</span><span>${money(bill.actual_refund_amount || 0)}</span></div>
+                  <div class="portal-info-row"><span>最近支付时间</span><span>${formatDateTime(bill.last_paid_at)}</span></div>
+                </div>
+                <div class="portal-inline-form" style="margin-top:14px;">
+                  <div class="portal-field">
+                    <label for="payMethod">支付方式</label>
+                    <select class="portal-select" id="payMethod" ${canPay() ? '' : 'disabled'}>
+                      <option value="wechat">微信支付</option>
+                      <option value="alipay">支付宝</option>
+                      <option value="card">银行卡</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="portal-form-actions" style="margin-top:16px;">
+                  ${canPay() ? '<button class="portal-button" type="button" id="payButton">确认支付并更新账单</button>' : '<span class="portal-status success">当前订单已完成支付</span>'}
+                </div>
+              </div>
+
+              <div class="portal-card">
+                <h3>订单操作</h3>
+                <div class="portal-inline-form">
+                  <div class="portal-field">
+                    <label for="rescheduleCheckinDate">新的入住日期</label>
+                    <input class="portal-input" id="rescheduleCheckinDate" type="date" value="${formatDate(booking.expected_checkin_date)}" ${canReschedule() ? '' : 'disabled'}>
+                  </div>
+                  <div class="portal-field">
+                    <label for="rescheduleCheckoutDate">新的离店日期</label>
+                    <input class="portal-input" id="rescheduleCheckoutDate" type="date" value="${formatDate(booking.expected_checkout_date)}" ${canReschedule() ? '' : 'disabled'}>
+                  </div>
+                </div>
+                <div class="portal-field" style="margin-top:14px;">
+                  <label for="refundReason">退款说明</label>
+                  <textarea class="portal-textarea" id="refundReason" ${canRefund() ? '' : 'disabled'} placeholder="填写退款原因，已支付订单可在入住前发起退款。"></textarea>
+                </div>
+                <div class="portal-form-actions" style="margin-top:16px;">
+                  ${canReschedule() ? '<button class="portal-button-secondary" type="button" id="rescheduleButton">提交改期</button>' : ''}
+                  ${canRefund() ? '<button class="portal-button-danger" type="button" id="refundButton">申请退款</button>' : ''}
+                  ${canCancel() ? '<button class="portal-button-danger" type="button" id="cancelButton">取消未支付订单</button>' : ''}
+                  <a class="portal-button-secondary" href="./list.html">返回订单列表</a>
+                </div>
+              </div>
+
+              <div class="portal-card">
+                <h3>支付流水</h3>
+                ${renderPaymentRecords()}
+              </div>
+
+              <div class="portal-card">
+                <h3>退款记录</h3>
+                ${renderRefundRecords()}
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="portal-section">
+          <div class="portal-section-head">
+            <h2>订单业务流时间线</h2>
+            <span>预订、支付、入住、离店会按时间顺序展示</span>
+          </div>
+          ${renderTimeline()}
+        </section>
+      `
+
+      bindGuestEvents()
+      if (canPay()) {
+        document.getElementById('payButton').addEventListener('click', payOrder)
+      }
+      if (canReschedule()) {
+        document.getElementById('rescheduleButton').addEventListener('click', rescheduleOrder)
+      }
+      if (canCancel()) {
+        document.getElementById('cancelButton').addEventListener('click', cancelOrder)
+      }
+      if (canRefund()) {
+        document.getElementById('refundButton').addEventListener('click', refundOrder)
+      }
+      const saveGuestsButton = document.getElementById('saveGuestsButton')
+      if (saveGuestsButton) {
+        saveGuestsButton.addEventListener('click', saveGuests)
+      }
+      startCountdown()
+      if (hotelPortal.query('focus') === 'pay') {
+        const payMethod = document.getElementById('payMethod')
+        if (payMethod) {
+          payMethod.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          payMethod.focus()
+        }
+      }
+    }
+
+    async function loadFlow() {
+      if (!orderId) {
+        detailHost.innerHTML = hotelPortal.emptyState('缺少订单编号')
+        return
+      }
+      try {
+        const result = await hotelPortal.api(`booking_order/flow/${orderId}`, { method: 'GET' })
+        state.flow = result.data
+        syncGuestRows()
+        renderOrder()
+      } catch (error) {
+        detailHost.innerHTML = hotelPortal.emptyState('订单详情加载失败')
+        hotelPortal.toast(error.message || '订单详情加载失败', 'error')
+      }
+    }
+
+    loadFlow()
+  </script>
+</body>
+</html>

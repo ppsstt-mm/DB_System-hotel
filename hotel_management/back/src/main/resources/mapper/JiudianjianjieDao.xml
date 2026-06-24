@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dao.JiudianjianjieDao">
+
+	<!-- 可根据自己的需求，是否要使�?-->
+    <resultMap type="com.entity.JiudianjianjieEntity" id="hotel_profileMap">
+        <result property="jiudianmingcheng" column="jiudianmingcheng"/>
+        <result property="leibie" column="leibie"/>
+        <result property="xingji" column="xingji"/>
+        <result property="jiudiantupian" column="jiudiantupian"/>
+        <result property="jiudiandizhi" column="jiudiandizhi"/>
+        <result property="fuwurexian" column="fuwurexian"/>
+        <result property="jiudianjieshao" column="jiudianjieshao"/>
+        <result property="reviewCount" column="reviewCount"/>
+        <result property="avgScore" column="avgScore"/>
+    </resultMap>
+
+    <sql id="hotelProfileColumns">
+        hotel_profile.id,
+        hotel_profile.addtime,
+        hotel_profile.jiudianmingcheng,
+        hotel_profile.leibie,
+        hotel_profile.xingji,
+        hotel_profile.jiudiantupian,
+        hotel_profile.jiudiandizhi,
+        hotel_profile.fuwurexian,
+        hotel_profile.jiudianjieshao,
+        hotel_profile.review_count AS reviewCount,
+        hotel_profile.avg_score AS avgScore
+    </sql>
+
+	<select id="selectListVO"
+		resultType="com.entity.vo.JiudianjianjieVO" >
+		SELECT <include refid="hotelProfileColumns" /> FROM hotel_profile  hotel_profile         
+        <where> 1=1 ${ew.sqlSegment}</where>
+	</select>
+	
+	<select id="selectVO"
+		resultType="com.entity.vo.JiudianjianjieVO" >
+		SELECT <include refid="hotelProfileColumns" /> FROM hotel_profile  hotel_profile 	
+ 		<where> 1=1 ${ew.sqlSegment}</where>
+	</select>
+
+    <select id="selectListView"
+		resultType="com.entity.view.JiudianjianjieView" >
+
+		SELECT <include refid="hotelProfileColumns" /> FROM hotel_profile  hotel_profile 	        
+        <where> 1=1 ${ew.sqlSegment}</where>
+	</select>
+	
+	<select id="selectView"
+		resultType="com.entity.view.JiudianjianjieView" >
+		SELECT <include refid="hotelProfileColumns" /> FROM hotel_profile  hotel_profile <where> 1=1 ${ew.sqlSegment}</where>
+	</select>
+	
+
+</mapper>

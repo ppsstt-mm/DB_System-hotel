@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dao.JiudiankefangDao">
+
+	<!-- 可根据自己的需求，是否要使�?-->
+    <resultMap type="com.entity.JiudiankefangEntity" id="room_catalogMap">
+        <result property="kefangmingcheng" column="kefangmingcheng"/>
+        <result property="room_category" column="room_category"/>
+        <result property="hotelProfileId" column="hotelProfileId"/>
+        <result property="roomCategoryId" column="roomCategoryId"/>
+        <result property="kefangtupian" column="kefangtupian"/>
+        <result property="kefangjiage" column="kefangjiage"/>
+        <result property="shuliang" column="shuliang"/>
+        <result property="jiudianmingcheng" column="jiudianmingcheng"/>
+        <result property="jiudiandizhi" column="jiudiandizhi"/>
+        <result property="kefangsheshi" column="kefangsheshi"/>
+        <result property="kefangjieshao" column="kefangjieshao"/>
+        <result property="clicknum" column="clicknum"/>
+        <result property="reviewCount" column="reviewCount"/>
+        <result property="avgScore" column="avgScore"/>
+    </resultMap>
+
+    <sql id="roomCatalogColumns">
+        room_catalog.id,
+        room_catalog.addtime,
+        room_catalog.kefangmingcheng,
+        room_catalog.room_category,
+        room_catalog.hotel_profile_id AS hotelProfileId,
+        room_catalog.room_category_id AS roomCategoryId,
+        room_catalog.kefangtupian,
+        room_catalog.kefangjiage,
+        room_catalog.shuliang,
+        room_catalog.jiudianmingcheng,
+        room_catalog.jiudiandizhi,
+        room_catalog.kefangsheshi,
+        room_catalog.kefangjieshao,
+        room_catalog.clicknum,
+        room_catalog.review_count AS reviewCount,
+        room_catalog.avg_score AS avgScore
+    </sql>
+
+	<select id="selectListVO"
+		resultType="com.entity.vo.JiudiankefangVO" >
+		SELECT <include refid="roomCatalogColumns" /> FROM room_catalog  room_catalog         
+        <where> 1=1 ${ew.sqlSegment}</where>
+	</select>
+	
+	<select id="selectVO"
+		resultType="com.entity.vo.JiudiankefangVO" >
+		SELECT <include refid="roomCatalogColumns" /> FROM room_catalog  room_catalog 	
+ 		<where> 1=1 ${ew.sqlSegment}</where>
+	</select>
+
+    <select id="selectListView"
+		resultType="com.entity.view.JiudiankefangView" >
+
+		SELECT <include refid="roomCatalogColumns" /> FROM room_catalog  room_catalog 	        
+        <where> 1=1 ${ew.sqlSegment}</where>
+	</select>
+	
+	<select id="selectView"
+		resultType="com.entity.view.JiudiankefangView" >
+		SELECT <include refid="roomCatalogColumns" /> FROM room_catalog  room_catalog <where> 1=1 ${ew.sqlSegment}</where>
+	</select>
+	
+
+</mapper>
